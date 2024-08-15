@@ -1,0 +1,13 @@
+{
+  "name": "com.zpgame.flowgraph",
+  "displayName": "ZPGame.FlowGraph",
+  "description": "FlowGraph",
+  "version": "1.0.0",
+  "unity": "2020.1",
+  "license": "MIT",
+  "type": "library",
+  "restart": 1,
+  "dependencies": {
+    
+  }
+}

@@ -1,0 +1,20 @@
+﻿using FlowGraph.Node;
+using UnityEngine;
+
+namespace ZPGame
+{
+    [NodeNote("#T1#", "#T2#")]
+    public class #TTT# : BaseAction
+    {
+        [Header("#TTT#")]
+        public string content;
+
+        public override void RunningLogic(BaseTrigger emitTrigger)
+        {
+            //Write Logic
+
+            RunOver(emitTrigger);
+        }
+    }
+
+}

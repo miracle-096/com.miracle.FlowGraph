@@ -1,0 +1,18 @@
+﻿using FlowGraph.Node;
+using UnityEngine;
+
+namespace ZPGame
+{
+    [NodeNote("#T1#", "#T2#")]
+    public class #TTT# : BaseBranch
+    {
+        [Header("#TTT#")]
+        public string content;
+
+        public override bool IfResult(BaseTrigger emitTrigger)
+        {
+            return true;  
+        }
+    }
+
+}
