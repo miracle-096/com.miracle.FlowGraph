@@ -1,6 +1,6 @@
 {
-  "name": "com.zpgame.flowgraph",
-  "displayName": "ZPGame.FlowGraph",
+  "name": "com.miracle.FlowGraph",
+  "displayName": "Miracle.FlowGraph",
   "description": "FlowGraph",
   "version": "1.0.0",
   "unity": "2020.1",
