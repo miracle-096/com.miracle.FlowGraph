@@ -1,9 +1,9 @@
 {
-  "name": "com.miracle.FlowGraph",
+  "name": "com.miracle.flowgraph",
   "displayName": "Miracle.FlowGraph",
   "description": "FlowGraph",
   "version": "1.0.0",
-  "unity": "2020.1",
+  "unity": "2022.3",
   "license": "MIT",
   "type": "library",
   "restart": 1,
