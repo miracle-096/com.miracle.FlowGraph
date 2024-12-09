@@ -287,20 +287,19 @@ namespace FlowGraph.Node
         }
 
         protected BoolClass isDuplicate = new BoolClass();
-
-        public override void HandleEvent(EventBase evt)
+        
+        protected override void ExecuteDefaultAction(EventBase evt)
         {
-            base.HandleEvent(evt);
+            base.ExecuteDefaultAction(evt);
 
             if (evt is ValidateCommandEvent commandEvent)
             {
                 Debug.Log("Event:");
                 Debug.Log(commandEvent.commandName);
-                //限制一下0.2s执行一次  不然短时间会多次执行
+                // 限制一下0.2s执行一次 不然短时间会多次执行
                 if (commandEvent.commandName.Equals("Paste"))
                 {
-                    new EditorDelayCall().CheckBoolCall(0.2f, isDuplicate,
-                        OnDuplicate);
+                    new EditorDelayCall().CheckBoolCall(0.2f, isDuplicate, OnDuplicate);
                 }
             }
         }
