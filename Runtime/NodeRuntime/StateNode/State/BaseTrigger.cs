@@ -41,11 +41,6 @@ namespace FlowGraph.Node
             //EventManager.StopListening("");
         }
 
-        public void ResetState()
-        {
-            state = EState.None;
-        }
-
         [Button]
         public override void Execute()
         {
@@ -59,6 +54,10 @@ namespace FlowGraph.Node
 
             if (runOnlyOnce)
                 Destroy(this);
+            else
+            {
+                TransitionState(EState.Exit);
+            }
         }
 
         public override void OnEnter()
@@ -77,14 +76,12 @@ namespace FlowGraph.Node
 
         public override void OnRunning()
         {
-            //Trigger不需要实现OnRunning,由Action回调OnExit退出
-            //base.OnRunning();
+            base.OnRunning();
         }
 
         public override void OnExit()
         {
             base.OnExit();
-
         }
 
         protected virtual void Awake()
