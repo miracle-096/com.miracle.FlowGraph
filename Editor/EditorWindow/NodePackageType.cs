@@ -20,7 +20,7 @@ namespace FlowGraph.Node
         public static List<string> GetAllTypeStr()
         {
             List<string> result = new List<string>();
-            var data = AssetDatabase.LoadAssetAtPath<NodePackageType>("Packages/com.zpgame.flowgraph/Editor/EditorWindow/节点分类包和路径.asset");
+            var data = AssetDatabase.LoadAssetAtPath<NodePackageType>("Packages/com.miracle.FlowGraph/Editor/EditorWindow/1_节点分类包和路径.asset");
             data.packageTypes.ForEach(x => result.Add(x.packageType));
             return result;
         }
@@ -28,7 +28,7 @@ namespace FlowGraph.Node
         public static string GetPathByType(string nodeType)
         {
             string result = string.Empty;
-            var data = AssetDatabase.LoadAssetAtPath<NodePackageType>("Packages/com.zpgame.flowgraph/Editor/EditorWindow/节点分类包和路径.asset");
+            var data = AssetDatabase.LoadAssetAtPath<NodePackageType>("Packages/com.miracle.FlowGraph/Editor/EditorWindow/1_节点分类包和路径.asset");
             data.packageTypes.ForEach(x =>
             { 
                 if(x.packageType == nodeType)
