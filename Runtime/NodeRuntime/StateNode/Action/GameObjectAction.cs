@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Cysharp.Threading.Tasks;
 
 namespace FlowGraph.Node
 {
@@ -9,10 +10,8 @@ namespace FlowGraph.Node
         [Header("GameObjectAction")]
         public List<ActiveGo> activeGoes;
 
-        public override void RunningLogic(BaseTrigger emitTrigger)
+        public override async UniTask RunningLogicAsync()
         {
-            
-
             foreach (var activeGO in activeGoes)
             {
                 if (activeGO.go != null)
@@ -25,10 +24,8 @@ namespace FlowGraph.Node
                 }
             }
 
-
-            RunOver(emitTrigger);
+            await RunOverAsync();
         }
-
 
         [Serializable]
         public class ActiveGo

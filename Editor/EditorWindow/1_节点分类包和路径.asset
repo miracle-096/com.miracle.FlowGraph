@@ -17,5 +17,3 @@ MonoBehaviour:
     nodeScriptsPath: Assets/FlowGraph/Node/StateNode
   - packageType: FlowNode
     nodeScriptsPath: Assets/FlowGraph/NodeExtra/FlowNode
-  - packageType: GuideNode
-    nodeScriptsPath: Assets/GameMain/Scripts/Runtime/FlowNode/NodeExtra/GuideNode

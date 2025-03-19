@@ -61,24 +61,45 @@ namespace FlowGraph.Node
         /// </summary>
         private State _state;
 
-        public override NodeState state 
-        { 
-            get
-            {
-                return _state;
-            }
+        public override NodeState state
+        {
+            get => _state;
             set
             {
                 if (_state != null)
                     _state.node = null;
-
                 _state = (State)value;
                 _state.node = this;
-
                 if (_state != null)
                 {
-                    title = _state.GetNodeName();
+                    title = _state.name;
+                    RefreshExpandedState();
+                    RefreshPorts();
+                    UpdateTitleColor();
                 }
+            }
+        }
+        
+        private void UpdateTitleColor()
+        {
+            if (_state == null) return;
+
+            Color runningColor = new Color(0.37f, 1, 1, 1f); //浅蓝
+            Color completedColor = new Color(0.5f, 1, 0.37f, 1f); //浅绿
+
+            switch (_state.State)
+            {
+                case EState.Running:
+                case EState.Enter:
+                case EState.Exit:
+                    titleContainer.style.backgroundColor = new StyleColor(runningColor);
+                    break;
+                case EState.Finish:
+                    titleContainer.style.backgroundColor = new StyleColor(completedColor);
+                    break;
+                default:
+                    titleContainer.style.backgroundColor = StyleKeyword.Null;
+                    break;
             }
         }
     }

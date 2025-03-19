@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace FlowGraph.Node
@@ -6,32 +8,25 @@ namespace FlowGraph.Node
     public class InputAnyTrigger : BaseTrigger
     {
         public bool allKey = false;
-        //Called on Enable
-        public override void RegisterSaveTypeEvent()
-        {
-            //EventManager.StartListening("",Execute);
-        }
-
-        //Called on DisEnable
-        public override void DeleteSaveTypeEvent()
-        {
-            //EventManager.StopListening("",Execute);
-        }
-
         public List<KeyCode> keys;
 
-        private void Update()
+        public override void RegisterSaveTypeEvent()
         {
-            foreach(var key in keys)
-            {
-                if (Input.GetKeyDown(key))
-                    Execute();
-            }
-            if(allKey && Input.anyKey)
-            {
-                Execute();
-            }
+            EventBetter.Listen<InputAnyTrigger, InputKeyCode>(this,OnInputKeyCode);
         }
+
+        private void OnInputKeyCode(InputKeyCode input)
+        {
+            if(allKey || keys.Any(key => input.keyCode == key))
+                ExecuteAsync().Forget();
+        }
+        
+        public override void DeleteSaveTypeEvent()
+        {
+            EventBetter.Unlisten<InputKeyCode>(this);
+        }
+
+        
     }
 
 }

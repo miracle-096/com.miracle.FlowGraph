@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using Sirenix.OdinInspector;
 using UnityEngine.UIElements;
@@ -19,13 +20,13 @@ namespace FlowGraph.Node
     }
     public interface IStateEvent
     {
-        void Execute();
+        UniTask ExecuteAsync();
         void OnEnter();
         void OnRunning();
         void OnExit();
     }
 
-    public abstract partial class NodeState : MonoBehaviour
+    public abstract partial class NodeState : ScriptableObject
     {
         public virtual EState State 
         { 
@@ -33,6 +34,7 @@ namespace FlowGraph.Node
             { 
                 return EState.None; 
             } 
+            set{}
         }
         //流向下一节点的流
         public MonoState nextFlow;
@@ -40,15 +42,59 @@ namespace FlowGraph.Node
 
     public abstract class MonoState : NodeState, IStateEvent
     {
-        [SerializeField,Space]
+        [SerializeField, Space]
         protected EState state;
 
+        public override EState State
+        { 
+            get => state;
+            set
+            {
+                if (state != value)
+                {
+                    state = value;
+                    UpdateNodeColor();
+                }
+            }
+        }
+        
         [TextArea,Space]
         public string note;
 
+#if UNITY_EDITOR
+        private void UpdateNodeColor()
+        {
+            if(node != null)
+            {
+                Color runningColor = new Color(0.37f, 1, 1, 1f); //浅蓝
+                Color compeletedColor = new Color(0.5f, 1, 0.37f, 1f); //浅绿
+                Color portColor = new Color(0.41f, 0.72f, 0.72f, 1f); //灰蓝
+
+                if (State == EState.Running || State == EState.Enter || State == EState.Exit)
+                {
+                    node.titleContainer.style.backgroundColor = new StyleColor(runningColor);
+                }
+                else if (State == EState.Finish)
+                {
+                    node.titleContainer.style.backgroundColor = new StyleColor(compeletedColor);
+                }
+                else
+                {
+                    node.titleContainer.style.backgroundColor = StyleKeyword.Null;
+                }
+                UnityEditor.EditorUtility.SetDirty(this);
+            }
+        }
+
+        private void OnValidate()
+        {
+            UpdateNodeColor();
+        }
+#endif
+
         protected void TransitionState(EState _state)
         {
-            state = _state;
+            State = _state;
             switch (state)
             {
                 case EState.Enter:
@@ -61,27 +107,9 @@ namespace FlowGraph.Node
                     OnExit();
                     break;
             }
-#if UNITY_EDITOR
-            //显示Editor中Graph颜色（仅限编辑器模式下的Runtime Debug）
-            if(node != null)
-            {
-                Color runningColor = new Color(0.37f, 1, 1, 1f); //浅蓝
-                Color compeletedColor = new Color(0.5f, 1, 0.37f, 1f); //浅绿
-                Color portColor = new Color(0.41f, 0.72f, 0.72f, 1f); //灰蓝
-
-                if (State == EState.Running || State == EState.Enter || State == EState.Exit)
-                {
-                    node.titleContainer.style.backgroundColor = new StyleColor(runningColor);
-                }
-                if (State == EState.Finish)
-                {
-                    node.titleContainer.style.backgroundColor = new StyleColor(compeletedColor);
-                }
-            }
-#endif
         }
 
-        public virtual void Execute()
+        public virtual async UniTask ExecuteAsync()
         {
             TransitionState(EState.Enter);
         }
@@ -96,14 +124,6 @@ namespace FlowGraph.Node
         public virtual void OnExit()
         {
             TransitionState(EState.Finish);
-        }
-
-        public override EState State
-        { 
-            get 
-            { 
-                return state; 
-            } 
         }
     }
 }

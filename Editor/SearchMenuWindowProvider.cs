@@ -113,7 +113,7 @@ namespace FlowGraph.Node
                 .Where(x => !x.IsGenericTypeDefinition)
                 .Where(x => type.IsAssignableFrom(x))
                 .Concat(
-                    Assembly.Load("GameMain").GetTypes()
+                    Assembly.Load("Assembly-CSharp").GetTypes()
                         .Where(x => !x.IsAbstract)
                         .Where(x => !x.IsGenericTypeDefinition)
                         .Where(x => type.IsAssignableFrom(x))

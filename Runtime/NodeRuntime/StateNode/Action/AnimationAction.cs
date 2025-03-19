@@ -1,9 +1,9 @@
 using Sirenix.OdinInspector;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Cysharp.Threading.Tasks;
 
 namespace FlowGraph.Node
 {
@@ -18,25 +18,24 @@ namespace FlowGraph.Node
 
         public float timerDelta = 0f;
 
-        public override void RunningLogic(BaseTrigger emitTrigger)
+        public override async UniTask RunningLogicAsync()
         {
-
             animator.Play(animationClip.name);
 
             if (!waitUntilFinish)
             {
-                RunOver(emitTrigger);
+                await RunOverAsync();
             }
             else
             {
                 if (animationClip.isLooping)
                 {
-                    RunOver(emitTrigger);
-
+                    await RunOverAsync();
                 }
                 else
                 {
-                    StartCoroutine(Delay(()=>RunOver(emitTrigger), animationClip.length + timerDelta));
+                    await UniTask.Delay((int)((animationClip.length + timerDelta) * 1000));
+                    await RunOverAsync();
                 }
             }
         }
@@ -50,12 +49,5 @@ namespace FlowGraph.Node
 
             return null;
         }
-
-        IEnumerator Delay(Action action,float timer)
-        {
-            yield return new WaitForSeconds(animationClip.length + timerDelta);
-            action?.Invoke();
-        }
     }
-
 }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using Cysharp.Threading.Tasks;
 
 namespace FlowGraph.Node
 {
@@ -9,12 +10,11 @@ namespace FlowGraph.Node
         public Transform startPos;
         public Transform parent;
 
-        public override void RunningLogic(BaseTrigger emitTrigger)
+        public override async UniTask RunningLogicAsync()
         {
             GameObject.Instantiate(protype, startPos.transform.position, Quaternion.identity, parent);
 
-            RunOver(emitTrigger);
+            await RunOverAsync();
         }
     }
-
 }

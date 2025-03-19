@@ -15,12 +15,12 @@ MonoBehaviour:
   createPath: Assets/GameMain/Scripts/Runtime/FlowNode/NodeRuntimeExtra/GuideNode/Action
   createFileName: SequenceGuideAction
   prototype: {fileID: 4900000, guid: 5af8a262813a1eb4495a525093c07178, type: 3}
-  code: "using FlowGraph.Node;\r\nusing UnityEngine;\r\n\r\nnamespace ZPGame\r\n{\r\n   
-    [NodeNote(\"\u64CD\u4F5C\u5F15\u5BFC\u6D41\u7A0B\", \"GuideNode\")]\r\n    public
-    class SequenceGuideAction : BaseAction\r\n    {\r\n        [Header(\"SequenceGuideAction\")]\r\n       
-    public string content;\r\n\r\n        public override void RunningLogic(BaseTrigger
-    emitTrigger)\r\n        {\r\n            //Write Logic\r\n\r\n            RunOver(emitTrigger);\r\n       
+  code: "using FlowGraph.Node;\r\nusing UnityEngine;\r\nusing Cysharp.Threading.Tasks;\r\n\r\nnamespace
+    ZPGame\r\n{\r\n    [NodeNote(\"\u64CD\u4F5C\u5F15\u5BFC\u6D41\u7A0B\", \"UnityBase\")]\r\n   
+    public class SequenceGuideAction : BaseAction\r\n    {\r\n        [Header(\"SequenceGuideAction\")]\r\n       
+    public string content;\r\n\r\n        public override async UniTask RunningLogicAsync()\r\n       
+    {\r\n            //Write Logic\r\n\r\n            await RunOverAsync();\r\n       
     }\r\n    }\r\n\r\n}"
   upFolderName: Action
   nodeNote: "\u64CD\u4F5C\u5F15\u5BFC\u6D41\u7A0B"
-  packageType: GuideNode
+  packageType: UnityBase

@@ -1,7 +1,10 @@
 {
     "name": "FlowGraph.Runtime",
     "rootNamespace": "FlowGraph.Runtime",
-    "references": [],
+    "references": [
+        "GUID:f51ebe6a0ceec4240a699833d6309b23",
+        "GUID:843439396b9d8b7489a429f62ec9000f"
+    ],
     "includePlatforms": [
         "Android",
         "Editor",

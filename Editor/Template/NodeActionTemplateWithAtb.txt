@@ -1,5 +1,6 @@
 ﻿using FlowGraph.Node;
 using UnityEngine;
+using Cysharp.Threading.Tasks;
 
 namespace ZPGame
 {
@@ -9,11 +10,11 @@ namespace ZPGame
         [Header("#TTT#")]
         public string content;
 
-        public override void RunningLogic(BaseTrigger emitTrigger)
+        public override async UniTask RunningLogicAsync()
         {
             //Write Logic
 
-            RunOver(emitTrigger);
+            await RunOverAsync();
         }
     }
 

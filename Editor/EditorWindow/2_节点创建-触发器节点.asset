@@ -16,7 +16,7 @@ MonoBehaviour:
   createFileName: OperationGuideTrigger
   prototype: {fileID: 4900000, guid: 31cb5a5237b8b8d419a89db6b8082f43, type: 3}
   code: "using FlowGraph.Node;\r\nusing UnityEngine;\r\n\r\nnamespace ZPGame\r\n{\r\n   
-    [NodeNote(\"\u64CD\u4F5C\u5F15\u5BFC\u4E8B\u4EF6\u76D1\u542C\u5668\", \"GuideNode\")]\r\n   
+    [NodeNote(\"\u64CD\u4F5C\u5F15\u5BFC\u4E8B\u4EF6\u76D1\u542C\u5668\", \"UnityBase\")]\r\n   
     public class OperationGuideTrigger : BaseTrigger\r\n    {\r\n        //Called
     on Enable\r\n        public override void RegisterSaveTypeEvent()\r\n       
     {\r\n            //EventManager.StartListening(\"\",Execute);\r\n        }\r\n\r\n       
@@ -25,4 +25,4 @@ MonoBehaviour:
     }\r\n\r\n}"
   upFolderName: Trigger
   nodeNote: "\u64CD\u4F5C\u5F15\u5BFC\u4E8B\u4EF6\u76D1\u542C\u5668"
-  packageType: GuideNode
+  packageType: UnityBase

@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using Cysharp.Threading.Tasks;
 
 namespace FlowGraph.Node
 {
@@ -7,12 +8,11 @@ namespace FlowGraph.Node
         [Header("Debug Action")]
         public string content;
 
-        public override void RunningLogic(BaseTrigger emitTrigger)
+        public override async UniTask RunningLogicAsync()
         {
             Debug.Log(content);
 
-            RunOver(emitTrigger);
+            await RunOverAsync();
         }
     }
-
 }

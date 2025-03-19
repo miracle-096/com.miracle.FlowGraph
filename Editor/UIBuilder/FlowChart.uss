@@ -4,3 +4,22 @@ GridBackground  {
     --thick-line-color: rgba(193,196,192,0.1);
     --spacing: 15;
 }
+
+.flowchart-group {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.flowchart-group .title {
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 5px;
+    border-radius: 3px;
+    margin-bottom: 5px;
+}
+
+.flowchart-group .title:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+}

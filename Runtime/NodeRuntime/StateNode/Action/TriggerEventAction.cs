@@ -1,8 +1,9 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Sirenix.OdinInspector;
 using System;
+using Cysharp.Threading.Tasks;
+
 namespace FlowGraph.Node
 {
     public class TriggerEventAction : BaseAction
@@ -16,10 +17,9 @@ namespace FlowGraph.Node
         [LabelText("注销事件")]
         public bool deleteSaveTypeEvent = false;
         
-        public override void RunningLogic(BaseTrigger emitTrigger) {
-
+        public override async UniTask RunningLogicAsync() {
             if (executeEvent)
-                baseTrigger.Execute();
+                await baseTrigger.ExecuteAsync();
 
             if (registerSaveTypeEvent)
                 baseTrigger.RegisterSaveTypeEvent();
@@ -27,8 +27,7 @@ namespace FlowGraph.Node
             if (deleteSaveTypeEvent)
                 baseTrigger.DeleteSaveTypeEvent();
 
-
-            RunOver(emitTrigger);
+            await RunOverAsync();
         }
     }
 }

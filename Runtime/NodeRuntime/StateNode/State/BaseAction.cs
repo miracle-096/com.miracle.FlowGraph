@@ -1,7 +1,7 @@
 ﻿using Sirenix.OdinInspector;
 using System;
-using System.Collections;
 using UnityEngine;
+using Cysharp.Threading.Tasks;
 
 namespace FlowGraph.Node
 {
@@ -9,30 +9,22 @@ namespace FlowGraph.Node
     {
         [Header("进入时等待一帧")] public bool wait1Frame = false;
 
-        //在派生类中填写逻辑，并回调Runover()
-        public abstract void RunningLogic(BaseTrigger emitTrigger);
+        public abstract UniTask RunningLogicAsync();
 
-        [Button]
-        public override void Execute()
-        {
-            if (UnityEngine.Application.isPlaying)
-                Execute(null);
-        }
-        public void Execute(BaseTrigger emitTrigger)
+        [Button("执行")]
+        public override async UniTask ExecuteAsync()
         {
             TransitionState(EState.Running);
 
-            if (wait1Frame && gameObject.activeInHierarchy)
+            if (wait1Frame)
             {
-                StartCoroutine(DelayFrame(RunningLogic, emitTrigger));
+                await UniTask.NextFrame();
             }
-            else
-            {
-                RunningLogic(emitTrigger);
-            }
+
+            await RunningLogicAsync();
         }
 
-        public virtual void RunOver(BaseTrigger emitTrigger)
+        public virtual async UniTask RunOverAsync()
         {
             OnExitEvent?.Invoke();
             OnExitEvent = null;
@@ -41,30 +33,17 @@ namespace FlowGraph.Node
             {
                 //继续执行下一个节点
                 if (nextFlow is BaseAction nextAction)
-                    nextAction.Execute(emitTrigger);
+                    await nextAction.ExecuteAsync();
                 else
-                    nextFlow.Execute();
+                    await nextFlow.ExecuteAsync();
             }
             else
             {
-                //最后一个节点了，切换Trigger状态
-                emitTrigger?.OnExit();
+                TransitionState(EState.Exit);
             }
 
-            TransitionState(EState.Exit);
-        }
-
-        public override void OnRunning()
-        {
-            //不执行任何操作，由RunOver触发OnExit
         }
 
         [HideInInspector] public event Action OnExitEvent;
-
-        IEnumerator DelayFrame(Action<BaseTrigger> action, BaseTrigger emitTrigger)
-        {
-            yield return null;
-            action?.Invoke(emitTrigger);
-        }
     }
 }

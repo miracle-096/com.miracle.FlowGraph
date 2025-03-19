@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using Cysharp.Threading.Tasks;
 
 namespace FlowGraph.Node
 {
@@ -12,32 +13,30 @@ namespace FlowGraph.Node
 
 
         //在派生类中实现该逻辑
-        public abstract bool IfResult(BaseTrigger emitTrigger);
+        public abstract bool IfResult();
 
-        public override void RunningLogic(BaseTrigger emitTrigger)
+        public override async UniTask RunningLogicAsync()
         {
-            RunOver(emitTrigger);
+            await RunOverAsync();
         }
 
-        public override void RunOver(BaseTrigger emitTrigger)
+        public override async UniTask RunOverAsync()
         {
             //判断下一节点的流向
-            nextFlow = IfResult(emitTrigger) ? trueFlow : falseFlow;
+            nextFlow = IfResult() ? trueFlow : falseFlow;
 
             if (nextFlow)
             {
                 //继续执行下一个节点
                 if (nextFlow is BaseAction nextAction)
-                    nextAction.Execute(emitTrigger);
+                    await nextAction.ExecuteAsync();
                 else
-                    nextFlow.Execute();
+                    await nextFlow.ExecuteAsync();
             }
             else
             {
-                //最后一个节点了，切换Trigger状态
-                emitTrigger?.OnExit();
+                TransitionState(EState.Exit);
             }
-            TransitionState(EState.Finish);
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections;
 using UnityEngine;
+using Cysharp.Threading.Tasks;
 
 namespace FlowGraph.Node
 {
@@ -9,21 +9,15 @@ namespace FlowGraph.Node
         [Header("等待x秒后执行下一个")]
         public float timer = 1f;
 
-        public override void RunningLogic(BaseTrigger emitTrigger)
-        {
-            StartCoroutine(WaitTime(()=>RunOver(emitTrigger)));
-        }
-
-        IEnumerator WaitTime(Action _event)
+        public override async UniTask RunningLogicAsync()
         {
             if(timer <= 0)
             {
-                _event?.Invoke();
-                yield break;
+                await RunOverAsync();
+                return;
             }
-            yield return new WaitForSeconds(timer);
-            _event?.Invoke();
+            await UniTask.Delay((int)(timer * 1000));
+            await RunOverAsync();
         }
     }
-
 }

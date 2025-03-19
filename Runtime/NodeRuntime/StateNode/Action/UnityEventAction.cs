@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.Events;
+using Cysharp.Threading.Tasks;
 
 namespace FlowGraph.Node
 {
@@ -8,12 +9,11 @@ namespace FlowGraph.Node
         [Header("UnityEventAction Action")]
         public UnityEvent unityEvent;
 
-        public override void RunningLogic(BaseTrigger emitTrigger)
+        public override async UniTask RunningLogicAsync()
         {
             unityEvent?.Invoke();
 
-            RunOver(emitTrigger);
+            await RunOverAsync();
         }
     }
-
 }
