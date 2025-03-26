@@ -23,6 +23,7 @@ namespace FlowGraph.Node
         private const string GROUP_STYLE_NAME = "flowchart-group";
 
         // 添加组数据相关的字段
+        private List<GroupData> groupData = new List<GroupData>();
         private List<GroupData> groupDataList = new List<GroupData>();
         private const string GROUP_DATA_KEY = "FlowChart_GroupData";
 
@@ -278,7 +279,7 @@ namespace FlowGraph.Node
                     if (branch.falseFlow != null)
                         AddEdgeByPorts(falsePorts, inputPorts[map[branch.falseFlow]]);
                 }
-                else if (node is MonoState state)
+                else if (node is NodeState state)
                 {
                     //普通的Action或者Trigger，只处理nextFlow就好了
                     if (state.nextFlow != null)
@@ -375,7 +376,7 @@ namespace FlowGraph.Node
                     nodeView.state.nextFlow = null;
                     if (nodeView.state is BaseSequence sq)
                     {
-                        sq.nextflows = new List<MonoState>();
+                        sq.nextflows = new List<NodeState>();
                     }
                     if (nodeView.state is BaseBranch br)
                     {
@@ -471,34 +472,7 @@ namespace FlowGraph.Node
             AddElement(group);
             Debug.Log("节点组创建成功");
         }
-
-        // 添加删除节点组的方法
-        public void DeleteGroup(Group group)
-        {
-            if (group != null)
-            {
-                RemoveElement(group);
-            }
-        }
-
-        // 添加将节点添加到组的方法
-        public void AddNodeToGroup(BaseNodeView node, Group group)
-        {
-            if (node != null && group != null)
-            {
-                group.AddElement(node);
-            }
-        }
-
-        // 添加从组中移除节点的方法
-        public void RemoveNodeFromGroup(BaseNodeView node, Group group)
-        {
-            if (node != null && group != null)
-            {
-                group.RemoveElement(node);
-            }
-        }
-
+        
         // 添加保存组数据的方法
         public void SaveGroupData()
         {
@@ -631,9 +605,9 @@ namespace FlowGraph.Node
                 if (sourceNode == null) continue;
 
                 // 加载输出连接
-                if (nodeData is MonoState monoState && monoState.nextFlow != null)
+                if (nodeData is NodeState nodeState && nodeState.nextFlow != null)
                 {
-                    var targetNode = nodes.FirstOrDefault(n => (n as BaseNodeView)?.state == monoState.nextFlow);
+                    var targetNode = nodes.FirstOrDefault(n => (n as BaseNodeView)?.state == nodeState.nextFlow);
                     if (targetNode != null)
                     {
                         var sourcePort = sourceNode.outputContainer.Q<Port>();
@@ -650,16 +624,14 @@ namespace FlowGraph.Node
 
         private BaseNodeView CreateNode(NodeState nodeState)
         {
-            if (nodeState is BaseAction)
-                return new ActionNodeView { state = nodeState };
-            else if (nodeState is BaseTrigger)
-                return new TriggerNodeView { state = nodeState };
-            else if (nodeState is BaseSequence)
-                return new SequenceNodeView { state = nodeState };
-            else if (nodeState is BaseBranch)
-                return new BranchNodeView { state = nodeState };
-
-            return null;
+            return nodeState switch
+            {
+                BaseSequence => new SequenceNodeView { state = nodeState },
+                BaseBranch => new BranchNodeView { state = nodeState },
+                BaseAction => new ActionNodeView { state = nodeState },
+                BaseTrigger => new TriggerNodeView { state = nodeState },
+                _ => null
+            };
         }
 
         public void SaveGraph()
@@ -682,24 +654,14 @@ namespace FlowGraph.Node
             {
                 if (edge.input.node is BaseNodeView inputNode && edge.output.node is BaseNodeView outputNode)
                 {
-                    if (outputNode.state is MonoState monoState)
+                    if (outputNode.state is NodeState nodeState)
                     {
-                        monoState.nextFlow = inputNode.state as MonoState;
+                        nodeState.nextFlow = inputNode.state;
                     }
                 }
             }
 
             EditorUtility.SetDirty(currentGraphData);
         }
-        //
-        // public override void BuildContextualMenu(ContextualMenuPopulateEvent evt)
-        // {
-        //     evt.menu.AppendAction("添加节点", (action) =>
-        //     {
-        //         var menuWindowProvider = ScriptableObject.CreateInstance<SearchMenuWindowProvider>();
-        //         menuWindowProvider.OnSelectEntryHandler = OnMenuSelectEntry;
-        //         SearchWindow.Open(new SearchWindowContext(evt.screenMousePosition), menuWindowProvider);
-        //     });
-        // }
     }
 }

@@ -22,7 +22,7 @@ namespace FlowGraph.Node
         void DeleteSaveTypeEvent();
     }
 
-    public abstract class BaseTrigger : MonoState, ITriggerEvent
+    public abstract class BaseTrigger : NodeState, ITriggerEvent
     {
         [LabelText("运行中可再次被激活")] public bool canExecuteOnRunning = false;
         [LabelText("只执行一次")] public bool runOnlyOnce = false;

@@ -7,7 +7,7 @@ namespace FlowGraph.Node
 {
     public abstract class BaseSequence : BaseAction
     {
-        public List<MonoState> nextflows = new List<MonoState>();
+        public List<NodeState> nextflows = new List<NodeState>();
         [Header("每个行为之间是否等待x秒,输入-1时等待1帧")] public float waitTimeEachAction = 0;
         [ReadOnly] public int runningAction = 0;
 

@@ -26,26 +26,15 @@ namespace FlowGraph.Node
         void OnExit();
     }
 
-    public abstract partial class NodeState : ScriptableObject
+    public abstract partial class NodeState : ScriptableObject, IStateEvent
     {
-        public virtual EState State 
-        { 
-            get 
-            { 
-                return EState.None; 
-            } 
-            set{}
-        }
         //流向下一节点的流
-        public MonoState nextFlow;
-    }
+        public NodeState nextFlow;
 
-    public abstract class MonoState : NodeState, IStateEvent
-    {
         [SerializeField, Space]
         protected EState state;
 
-        public override EState State
+        public virtual EState State
         { 
             get => state;
             set

@@ -5,7 +5,7 @@ using Cysharp.Threading.Tasks;
 
 namespace FlowGraph.Node
 {
-    public abstract class BaseAction : MonoState
+    public abstract class BaseAction : NodeState
     {
         [Header("进入时等待一帧")] public bool wait1Frame = false;
 

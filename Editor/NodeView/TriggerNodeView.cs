@@ -20,7 +20,7 @@ namespace FlowGraph.Node
             base.OnEdgeCreate(edge);
 
             BaseNodeView targetView = edge.input.node as BaseNodeView;
-            state.nextFlow = targetView.state as MonoState;
+            state.nextFlow = targetView.state;
         }
 
         public override void OnEdgeRemove(Edge edge)

@@ -99,7 +99,7 @@ namespace FlowGraph.Node
 
             //新建FlowChart按钮
             var button = rootVisualElement.Q<Button>("new");
-            button.clicked += delegate() { objectField.value = FlowGraphData.CreateFlowGraphData(); };
+            button.clicked += delegate() { objectField.value = FlowGraphDataEditor.CreateFlowGraphData(); };
 
             //新建刷新按钮
             var buttonR = rootVisualElement.Q<Button>("refresh");

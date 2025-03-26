@@ -35,11 +35,11 @@ namespace FlowGraph.Node
 
             if (edge.output.portName.Equals("true"))
             {
-                (parentView.state as BaseBranch).trueFlow = childView.state as MonoState;
+                (parentView.state as BaseBranch).trueFlow = childView.state;
             }
             if (edge.output.portName.Equals("false"))
             {
-                (parentView.state as BaseBranch).falseFlow = childView.state as MonoState;
+                (parentView.state as BaseBranch).falseFlow = childView.state;
             }
         }
 

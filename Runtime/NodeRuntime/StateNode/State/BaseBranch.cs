@@ -7,9 +7,9 @@ namespace FlowGraph.Node
     {
         //流向下一节点的流
         [HideInInspector]
-        public MonoState trueFlow;
+        public NodeState trueFlow;
         [HideInInspector]
-        public MonoState falseFlow;
+        public NodeState falseFlow;
 
 
         //在派生类中实现该逻辑
