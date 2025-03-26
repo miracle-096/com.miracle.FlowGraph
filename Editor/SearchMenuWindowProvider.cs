@@ -106,18 +106,35 @@ namespace FlowGraph.Node
             }
             return OnSelectEntryHandler(searchTreeEntry, context);
         }
-        private List<Type> GetClassList(Type type)
+        private List<Type> GetClassList(Type type) 
         {
             var typeList = type.Assembly.GetTypes()
                 .Where(x => !x.IsAbstract)
                 .Where(x => !x.IsGenericTypeDefinition)
                 .Where(x => type.IsAssignableFrom(x))
-                .Concat(
-                    Assembly.Load("Assembly-CSharp").GetTypes()
-                        .Where(x => !x.IsAbstract)
-                        .Where(x => !x.IsGenericTypeDefinition)
-                        .Where(x => type.IsAssignableFrom(x))
-                ).ToList();
+                .ToList();
+
+            try
+            {
+                // 尝试加载所有已加载的程序集
+                var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+                foreach (var assembly in assemblies)
+                {
+                    if (assembly.FullName.Contains("Assembly-CSharp"))
+                    {
+                        typeList.AddRange(assembly.GetTypes()
+                            .Where(x => !x.IsAbstract)
+                            .Where(x => !x.IsGenericTypeDefinition)
+                            .Where(x => type.IsAssignableFrom(x)));
+                        break;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"加载程序集时发生错误: {e.Message}");
+            }
+
             return typeList;
         }
     }

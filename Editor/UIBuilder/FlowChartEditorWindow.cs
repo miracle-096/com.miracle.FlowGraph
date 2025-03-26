@@ -8,6 +8,7 @@ namespace FlowGraph.Node
     public class FlowChartEditorWindow : EditorWindow
     {
         public FlowGraphData currentGraphData;
+        private const string LastGraphDataKey = "FlowChart_LastGraphData";
 
         public static void OpenWindow(FlowGraphData data)
         {
@@ -27,6 +28,30 @@ namespace FlowGraph.Node
         private InspectorView inspectorView;
 
         private TextField gameObjectTextField;
+
+        private void OnEnable()
+        {
+            // 从EditorPrefs恢复上次打开的GraphData
+            string lastGraphDataPath = EditorPrefs.GetString(LastGraphDataKey, "");
+            if (!string.IsNullOrEmpty(lastGraphDataPath))
+            {
+                currentGraphData = AssetDatabase.LoadAssetAtPath<FlowGraphData>(lastGraphDataPath);
+                if (currentGraphData != null)
+                {
+                    Init();
+                }
+            }
+        }
+
+        private void OnDisable()
+        {
+            // 保存当前打开的GraphData路径
+            if (currentGraphData != null)
+            {
+                string path = AssetDatabase.GetAssetPath(currentGraphData);
+                EditorPrefs.SetString(LastGraphDataKey, path);
+            }
+        }
 
         public void Init()
         {
