@@ -18,14 +18,8 @@ namespace FlowGraph.Node
         public FlowChartEditorWindow window;
 
         // 添加节点组相关的字段
-        private const string GROUP_STYLE_SHEET = "Packages/com.miracle.FlowGraph/Editor/UIBuilder/FlowChart.uss";
-        private const string GROUP_TITLE = "节点组";
-        private const string GROUP_STYLE_NAME = "flowchart-group";
+        private const string STYLE_SHEET = "Packages/com.miracle.FlowGraph/Editor/UIBuilder/FlowChart.uss";
 
-        // 添加组数据相关的字段
-        private List<GroupData> groupData = new List<GroupData>();
-        private List<GroupData> groupDataList = new List<GroupData>();
-        private const string GROUP_DATA_KEY = "FlowChart_GroupData";
 
         public FlowChartView()
         {
@@ -37,10 +31,7 @@ namespace FlowGraph.Node
             var grid = new GridBackground();
             Insert(0, grid);
 
-            // 添加节点组相关的操作
-            this.AddManipulator(new GroupSelectionManipulator());
-
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(GROUP_STYLE_SHEET);
+            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(STYLE_SHEET);
             styleSheets.Add(styleSheet);
 
             //当GraphView变化时，调用方法
@@ -54,9 +45,6 @@ namespace FlowGraph.Node
             {
                 SearchWindow.Open(new SearchWindowContext(context.screenMousePosition), menuWindowProvider);
             };
-
-            // 加载保存的组数据
-            LoadGroupData();
         }
 
         private bool listenToChange = true;
@@ -108,9 +96,6 @@ namespace FlowGraph.Node
                 }
             });
 
-            // 保存组数据
-            SaveGroupData();
-
             return graphViewChange;
         }
 
@@ -133,14 +118,14 @@ namespace FlowGraph.Node
                 return;
 
             BaseNodeView nodeView = null;
-            if (type.IsSubclassOf(typeof(BaseTrigger)))
-                nodeView = new TriggerNodeView();
-            if (type.IsSubclassOf(typeof(BaseAction)))
-                nodeView = new ActionNodeView();
             if (type.IsSubclassOf(typeof(BaseSequence)))
                 nodeView = new SequenceNodeView();
             if (type.IsSubclassOf(typeof(BaseBranch)))
                 nodeView = new BranchNodeView();
+            if (type.IsSubclassOf(typeof(BaseTrigger)))
+                nodeView = new TriggerNodeView();
+            if (type.IsSubclassOf(typeof(BaseAction)))
+                nodeView = new ActionNodeView();
 
             if (nodeView == null)
             {
@@ -199,16 +184,15 @@ namespace FlowGraph.Node
             if (currentGraphData == null || nodeClone == null)
                 return;
 
-            BaseNodeView nodeView = null;
-            //判断需要复原的节点
-            if (nodeClone is BaseTrigger trigger)
-                nodeView = new TriggerNodeView();
-            if (nodeClone is BaseAction action)
-                nodeView = new ActionNodeView();
-            if (nodeClone is BaseSequence sequence)
-                nodeView = new SequenceNodeView();
-            if (nodeClone is BaseBranch branch)
-                nodeView = new BranchNodeView();
+            BaseNodeView nodeView = nodeClone switch
+            {
+                //判断需要复原的节点
+                BaseSequence sequence => new SequenceNodeView(),
+                BaseBranch branch => new BranchNodeView(),
+                BaseTrigger trigger => new TriggerNodeView(),
+                BaseAction action => new ActionNodeView(),
+                _ => null
+            };
 
             if (nodeView == null)
             {
@@ -345,16 +329,15 @@ namespace FlowGraph.Node
                     var nodeClone = ScriptableObject.CreateInstance(baseNodeView.state.GetType()) as NodeState;
                     EditorUtility.CopySerialized(baseNodeView.state, nodeClone);
 
-                    BaseNodeView nodeView = null;
-                    //判断需要复原的节点
-                    if (nodeClone is BaseTrigger trigger)
-                        nodeView = new TriggerNodeView();
-                    if (nodeClone is BaseAction action)
-                        nodeView = new ActionNodeView();
-                    if (nodeClone is BaseSequence sequence)
-                        nodeView = new SequenceNodeView();
-                    if (nodeClone is BaseBranch branch)
-                        nodeView = new BranchNodeView();
+                    BaseNodeView nodeView = nodeClone switch
+                    {
+                        //判断需要复原的节点
+                        BaseSequence sequence => new SequenceNodeView(),
+                        BaseBranch branch => new BranchNodeView(),
+                        BaseTrigger trigger => new TriggerNodeView(),
+                        BaseAction action => new ActionNodeView(),
+                        _ => null
+                    };
 
                     if (nodeView == null)
                         return;
@@ -425,243 +408,243 @@ namespace FlowGraph.Node
         }
 
         // 添加创建节点组的方法
-        public void CreateGroup()
-        {
-            Debug.Log("尝试创建节点组");
-            var selectedNodes = selection.OfType<BaseNodeView>().ToList();
-            if (selectedNodes.Count == 0)
-            {
-                Debug.Log("没有选中的节点，无法创建组");
-                return;
-            }
-
-            Debug.Log($"选中了 {selectedNodes.Count} 个节点，开始创建组");
-
-            var group = new Group();
-            group.title = GROUP_TITLE;
-            
-            // 确保样式表已加载
-            if (styleSheets.count == 0)
-            {
-                var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(GROUP_STYLE_SHEET);
-                if (styleSheet != null)
-                {
-                    styleSheets.Add(styleSheet);
-                }
-            }
-            
-            group.styleSheets.Add(styleSheets[0]);
-            group.AddToClassList(GROUP_STYLE_NAME);
-
-            // 计算组的初始位置（使用选中节点的中心点）
-            Vector2 centerPos = Vector2.zero;
-            foreach (var node in selectedNodes)
-            {
-                centerPos += node.GetPosition().position;
-            }
-            centerPos /= selectedNodes.Count;
-            
-            // 设置组的位置
-            group.SetPosition(new Rect(centerPos, Vector2.zero));
-
-            foreach (var node in selectedNodes)
-            {
-                group.AddElement(node);
-            }
-
-            AddElement(group);
-            Debug.Log("节点组创建成功");
-        }
+        // public void CreateGroup()
+        // {
+        //     Debug.Log("尝试创建节点组");
+        //     var selectedNodes = selection.OfType<BaseNodeView>().ToList();
+        //     if (selectedNodes.Count == 0)
+        //     {
+        //         Debug.Log("没有选中的节点，无法创建组");
+        //         return;
+        //     }
+        //
+        //     Debug.Log($"选中了 {selectedNodes.Count} 个节点，开始创建组");
+        //
+        //     var group = new Group();
+        //     group.title = GROUP_TITLE;
+        //     
+        //     // 确保样式表已加载
+        //     if (styleSheets.count == 0)
+        //     {
+        //         var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(GROUP_STYLE_SHEET);
+        //         if (styleSheet != null)
+        //         {
+        //             styleSheets.Add(styleSheet);
+        //         }
+        //     }
+        //     
+        //     group.styleSheets.Add(styleSheets[0]);
+        //     group.AddToClassList(GROUP_STYLE_NAME);
+        //
+        //     // 计算组的初始位置（使用选中节点的中心点）
+        //     Vector2 centerPos = Vector2.zero;
+        //     foreach (var node in selectedNodes)
+        //     {
+        //         centerPos += node.GetPosition().position;
+        //     }
+        //     centerPos /= selectedNodes.Count;
+        //     
+        //     // 设置组的位置
+        //     group.SetPosition(new Rect(centerPos, Vector2.zero));
+        //
+        //     foreach (var node in selectedNodes)
+        //     {
+        //         group.AddElement(node);
+        //     }
+        //
+        //     AddElement(group);
+        //     Debug.Log("节点组创建成功");
+        // }
         
         // 添加保存组数据的方法
-        public void SaveGroupData()
-        {
-            groupDataList.Clear();
-            var groups = this.graphElements.OfType<Group>().ToList();
-            
-            foreach (var group in groups)
-            {
-                var groupData = new GroupData
-                {
-                    title = group.title,
-                    position = group.GetPosition().position
-                };
-
-                // 获取组内所有节点的GUID
-                foreach (var element in group.containedElements)
-                {
-                    if (element is BaseNodeView nodeView)
-                    {
-                        groupData.nodeGuids.Add(nodeView.state.GetInstanceID().ToString());
-                    }
-                }
-
-                groupDataList.Add(groupData);
-            }
-
-            // 将数据序列化为JSON并保存
-            string json = JsonUtility.ToJson(new SerializableGroupData { groups = groupDataList });
-            EditorPrefs.SetString(GROUP_DATA_KEY, json);
-        }
+        // public void SaveGroupData()
+        // {
+        //     groupDataList.Clear();
+        //     var groups = this.graphElements.OfType<Group>().ToList();
+        //     
+        //     foreach (var group in groups)
+        //     {
+        //         var groupData = new GroupData
+        //         {
+        //             title = group.title,
+        //             position = group.GetPosition().position
+        //         };
+        //
+        //         // 获取组内所有节点的GUID
+        //         foreach (var element in group.containedElements)
+        //         {
+        //             if (element is BaseNodeView nodeView)
+        //             {
+        //                 groupData.nodeGuids.Add(nodeView.state.GetInstanceID().ToString());
+        //             }
+        //         }
+        //
+        //         groupDataList.Add(groupData);
+        //     }
+        //
+        //     // 将数据序列化为JSON并保存
+        //     string json = JsonUtility.ToJson(new SerializableGroupData { groups = groupDataList });
+        //     EditorPrefs.SetString(GROUP_DATA_KEY, json);
+        // }
 
         // 添加加载组数据的方法
-        private void LoadGroupData()
-        {
-            string json = EditorPrefs.GetString(GROUP_DATA_KEY, "");
-            if (string.IsNullOrEmpty(json)) return;
-
-            var serializableData = JsonUtility.FromJson<SerializableGroupData>(json);
-            groupDataList = serializableData.groups;
-
-            // 在ResetNodeView后重建组
-            EditorApplication.delayCall += () =>
-            {
-                RebuildGroups();
-            };
-        }
+        // private void LoadGroupData()
+        // {
+        //     string json = EditorPrefs.GetString(GROUP_DATA_KEY, "");
+        //     if (string.IsNullOrEmpty(json)) return;
+        //
+        //     var serializableData = JsonUtility.FromJson<SerializableGroupData>(json);
+        //     groupDataList = serializableData.groups;
+        //
+        //     // 在ResetNodeView后重建组
+        //     EditorApplication.delayCall += () =>
+        //     {
+        //         RebuildGroups();
+        //     };
+        // }
 
         // 添加重建组的方法
-        private void RebuildGroups()
-        {
-            if (groupDataList == null) return;
-
-            foreach (var groupData in groupDataList)
-            {
-                var group = new Group();
-                group.title = groupData.title;
-                group.styleSheets.Add(styleSheets[0]);
-                group.AddToClassList(GROUP_STYLE_NAME);
-                group.SetPosition(new Rect(groupData.position, Vector2.zero));
-
-                // 查找并添加组内节点
-                foreach (var nodeGuid in groupData.nodeGuids)
-                {
-                    var node = nodes.FirstOrDefault(n => 
-                        n is BaseNodeView nodeView && 
-                        nodeView.state.GetInstanceID().ToString() == nodeGuid) as BaseNodeView;
-                    
-                    if (node != null)
-                    {
-                        group.AddElement(node);
-                    }
-                }
-
-                AddElement(group);
-            }
-        }
+        // private void RebuildGroups()
+        // {
+        //     if (groupDataList == null) return;
+        //
+        //     foreach (var groupData in groupDataList)
+        //     {
+        //         var group = new Group();
+        //         group.title = groupData.title;
+        //         group.styleSheets.Add(styleSheets[0]);
+        //         group.AddToClassList(GROUP_STYLE_NAME);
+        //         group.SetPosition(new Rect(groupData.position, Vector2.zero));
+        //
+        //         // 查找并添加组内节点
+        //         foreach (var nodeGuid in groupData.nodeGuids)
+        //         {
+        //             var node = nodes.FirstOrDefault(n => 
+        //                 n is BaseNodeView nodeView && 
+        //                 nodeView.state.GetInstanceID().ToString() == nodeGuid) as BaseNodeView;
+        //             
+        //             if (node != null)
+        //             {
+        //                 group.AddElement(node);
+        //             }
+        //         }
+        //
+        //         AddElement(group);
+        //     }
+        // }
 
         // 添加可序列化的组数据包装类
-        [Serializable]
-        private class SerializableGroupData
-        {
-            public List<GroupData> groups = new List<GroupData>();
-        }
+        // [Serializable]
+        // private class SerializableGroupData
+        // {
+        //     public List<GroupData> groups = new List<GroupData>();
+        // }
+        //
+        // public void LoadGraphData(FlowGraphData graphData)
+        // {
+        //     currentGraphData = graphData;
+        //     ClearGraph();
+        //     if (graphData != null)
+        //     {
+        //         LoadNodes();
+        //         LoadEdges();
+        //     }
+        // }
+        //
+        // private void ClearGraph()
+        // {
+        //     foreach (var node in nodes.ToList())
+        //     {
+        //         RemoveElement(node);
+        //     }
+        //     foreach (var edge in edges.ToList())
+        //     {
+        //         RemoveElement(edge);
+        //     }
+        // }
+        //
+        // private void LoadNodes()
+        // {
+        //     foreach (var nodeData in currentGraphData.nodes)
+        //     {
+        //         if (nodeData == null) continue;
+        //
+        //         var node = CreateNode(nodeData);
+        //         if (node != null)
+        //         {
+        //             node.SetPosition(new Rect(nodeData.nodePos, Vector2.zero));
+        //             AddElement(node);
+        //         }
+        //     }
+        // }
+        //
+        // private void LoadEdges()
+        // {
+        //     foreach (var nodeData in currentGraphData.nodes)
+        //     {
+        //         if (nodeData == null) continue;
+        //
+        //         var sourceNode = nodes.FirstOrDefault(n => (n as BaseNodeView)?.state == nodeData);
+        //         if (sourceNode == null) continue;
+        //
+        //         // 加载输出连接
+        //         if (nodeData is NodeState nodeState && nodeState.nextFlow != null)
+        //         {
+        //             var targetNode = nodes.FirstOrDefault(n => (n as BaseNodeView)?.state == nodeState.nextFlow);
+        //             if (targetNode != null)
+        //             {
+        //                 var sourcePort = sourceNode.outputContainer.Q<Port>();
+        //                 var targetPort = targetNode.inputContainer.Q<Port>();
+        //                 if (sourcePort != null && targetPort != null)
+        //                 {
+        //                     var edge = sourcePort.ConnectTo(targetPort);
+        //                     AddElement(edge);
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
-        public void LoadGraphData(FlowGraphData graphData)
-        {
-            currentGraphData = graphData;
-            ClearGraph();
-            if (graphData != null)
-            {
-                LoadNodes();
-                LoadEdges();
-            }
-        }
-
-        private void ClearGraph()
-        {
-            foreach (var node in nodes.ToList())
-            {
-                RemoveElement(node);
-            }
-            foreach (var edge in edges.ToList())
-            {
-                RemoveElement(edge);
-            }
-        }
-
-        private void LoadNodes()
-        {
-            foreach (var nodeData in currentGraphData.nodes)
-            {
-                if (nodeData == null) continue;
-
-                var node = CreateNode(nodeData);
-                if (node != null)
-                {
-                    node.SetPosition(new Rect(nodeData.nodePos, Vector2.zero));
-                    AddElement(node);
-                }
-            }
-        }
-
-        private void LoadEdges()
-        {
-            foreach (var nodeData in currentGraphData.nodes)
-            {
-                if (nodeData == null) continue;
-
-                var sourceNode = nodes.FirstOrDefault(n => (n as BaseNodeView)?.state == nodeData);
-                if (sourceNode == null) continue;
-
-                // 加载输出连接
-                if (nodeData is NodeState nodeState && nodeState.nextFlow != null)
-                {
-                    var targetNode = nodes.FirstOrDefault(n => (n as BaseNodeView)?.state == nodeState.nextFlow);
-                    if (targetNode != null)
-                    {
-                        var sourcePort = sourceNode.outputContainer.Q<Port>();
-                        var targetPort = targetNode.inputContainer.Q<Port>();
-                        if (sourcePort != null && targetPort != null)
-                        {
-                            var edge = sourcePort.ConnectTo(targetPort);
-                            AddElement(edge);
-                        }
-                    }
-                }
-            }
-        }
-
-        private BaseNodeView CreateNode(NodeState nodeState)
-        {
-            return nodeState switch
-            {
-                BaseSequence => new SequenceNodeView { state = nodeState },
-                BaseBranch => new BranchNodeView { state = nodeState },
-                BaseAction => new ActionNodeView { state = nodeState },
-                BaseTrigger => new TriggerNodeView { state = nodeState },
-                _ => null
-            };
-        }
-
-        public void SaveGraph()
-        {
-            if (currentGraphData == null) return;
-
-            // 保存节点数据
-            currentGraphData.nodes.Clear();
-            foreach (var node in nodes)
-            {
-                if (node is BaseNodeView nodeView && nodeView.state != null)
-                {
-                    nodeView.state.nodePos = node.GetPosition().position;
-                    currentGraphData.nodes.Add(nodeView.state);
-                }
-            }
-
-            // 保存连接数据
-            foreach (var edge in edges)
-            {
-                if (edge.input.node is BaseNodeView inputNode && edge.output.node is BaseNodeView outputNode)
-                {
-                    if (outputNode.state is NodeState nodeState)
-                    {
-                        nodeState.nextFlow = inputNode.state;
-                    }
-                }
-            }
-
-            EditorUtility.SetDirty(currentGraphData);
-        }
+        // private BaseNodeView CreateNode(NodeState nodeState)
+        // {
+        //     return nodeState switch
+        //     {
+        //         BaseSequence => new SequenceNodeView { state = nodeState },
+        //         BaseBranch => new BranchNodeView { state = nodeState },
+        //         BaseAction => new ActionNodeView { state = nodeState },
+        //         BaseTrigger => new TriggerNodeView { state = nodeState },
+        //         _ => null
+        //     };
+        // }
+        //
+        // public void SaveGraph()
+        // {
+        //     if (currentGraphData == null) return;
+        //
+        //     // 保存节点数据
+        //     currentGraphData.nodes.Clear();
+        //     foreach (var node in nodes)
+        //     {
+        //         if (node is BaseNodeView nodeView && nodeView.state != null)
+        //         {
+        //             nodeView.state.nodePos = node.GetPosition().position;
+        //             currentGraphData.nodes.Add(nodeView.state);
+        //         }
+        //     }
+        //
+        //     // 保存连接数据
+        //     foreach (var edge in edges)
+        //     {
+        //         if (edge.input.node is BaseNodeView inputNode && edge.output.node is BaseNodeView outputNode)
+        //         {
+        //             if (outputNode.state is NodeState nodeState)
+        //             {
+        //                 nodeState.nextFlow = inputNode.state;
+        //             }
+        //         }
+        //     }
+        //
+        //     EditorUtility.SetDirty(currentGraphData);
+        // }
     }
 }
