@@ -11,6 +11,14 @@ namespace FlowGraph.Node
         [Header("每个行为之间是否等待x秒,输入-1时等待1帧")] public float waitTimeEachAction = 0;
         [ReadOnly] public int runningAction = 0;
 
+        // 重写InitializePorts方法，确保有标准的控制流端口
+        public override void InitializePorts()
+        {
+            // 清除现有端口
+            Ports.Clear();
+            
+        }
+
         /// <summary>
         /// 向下执行所有节点
         /// </summary>
@@ -62,6 +70,16 @@ namespace FlowGraph.Node
         private class DataCache
         {
             public int count;
+        }
+
+        public void TryAddNextFlows(NodeState targetViewState)
+        {
+            //已经添加过的 先删除再添加改变顺序
+            if (nextflows.Contains(targetViewState))
+            {
+                nextflows.Remove(targetViewState);
+            }
+            nextflows.Add(targetViewState);
         }
     }
 }

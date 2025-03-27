@@ -9,21 +9,45 @@ namespace FlowGraph.Node
 {
     public class BranchNodeView : BaseNodeView<BaseBranch>
     {
+        // 端口引用
+        protected Port inputPort;
+        protected Port trueOutputPort;
+        protected Port falseOutputPort;
+
         public BranchNodeView()
         {
-            //Sequence有两个输出端口一个输入端口
-            Port input = GetPortForNode(this, Direction.Input, Port.Capacity.Multi);
-            Port output1 = GetPortForNode(this, Direction.Output, Port.Capacity.Single);
-            Port output2 = GetPortForNode(this, Direction.Output, Port.Capacity.Single);
-            input.portName = "input";
-            output1.portName = "true";
-            output2.portName = "false";
-
             title = state != null ? state.name : "IfNode";
+        }
 
-            inputContainer.Add(input);
-            outputContainer.Add(output1);
-            outputContainer.Add(output2);
+        // 实现抽象方法，创建流程控制端口
+        protected override void CreateControlFlowPorts()
+        {
+            //Branch有两个输出端口一个输入端口
+            inputPort = GetPortForNode(this, Direction.Input, Port.Capacity.Multi);
+            trueOutputPort = GetPortForNode(this, Direction.Output, Port.Capacity.Single);
+            falseOutputPort = GetPortForNode(this, Direction.Output, Port.Capacity.Single);
+            inputPort.portName = "input";
+            trueOutputPort.portName = "true";
+            falseOutputPort.portName = "false";
+
+            inputContainer.Add(inputPort);
+            outputContainer.Add(trueOutputPort);
+            outputContainer.Add(falseOutputPort);
+
+            // 如果state存在，添加到端口映射
+            if (state != null && state.Ports.Count > 0)
+            {
+                var inputNodePort = state.GetPort("input", false);
+                var trueNodePort = state.GetPort("true", true);
+                var falseNodePort = state.GetPort("false", true);
+
+                if (inputNodePort != null)
+                    portMap[inputNodePort.ID] = inputPort;
+                if (trueNodePort != null)
+                    portMap[trueNodePort.ID] = trueOutputPort;
+                if (falseNodePort != null)
+                    portMap[falseNodePort.ID] = falseOutputPort;
+            }
         }
 
         public override void OnEdgeCreate(Edge edge)
@@ -33,11 +57,11 @@ namespace FlowGraph.Node
             BaseNodeView parentView = edge.output.node as BaseNodeView; //自己
             BaseNodeView childView = edge.input.node as BaseNodeView;
 
-            if (edge.output.portName.Equals("true"))
+            if (edge.output == trueOutputPort)
             {
                 (parentView.state as BaseBranch).trueFlow = childView.state;
             }
-            if (edge.output.portName.Equals("false"))
+            if (edge.output == falseOutputPort)
             {
                 (parentView.state as BaseBranch).falseFlow = childView.state;
             }
@@ -48,13 +72,12 @@ namespace FlowGraph.Node
             base.OnEdgeRemove(edge);
 
             BaseNodeView parentView = edge.output.node as BaseNodeView; //自己
-            BaseNodeView childView = edge.input.node as BaseNodeView;
-
-            if (edge.input.portName == "true")
+            
+            if (edge.output == trueOutputPort)
             {
                 (parentView.state as BaseBranch).trueFlow = null;
             }
-            if (edge.input.portName == "false")
+            if (edge.output == falseOutputPort)
             {
                 (parentView.state as BaseBranch).falseFlow = null;
             }

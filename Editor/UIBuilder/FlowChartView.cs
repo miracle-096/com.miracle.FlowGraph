@@ -20,7 +20,6 @@ namespace FlowGraph.Node
         // 添加节点组相关的字段
         private const string STYLE_SHEET = "Packages/com.miracle.FlowGraph/Editor/UIBuilder/FlowChart.uss";
 
-
         public FlowChartView()
         {
             SetupZoom(ContentZoomer.DefaultMinScale, ContentZoomer.DefaultMaxScale);
@@ -82,7 +81,15 @@ namespace FlowGraph.Node
                 graphViewChange.edgesToCreate.ForEach(edge =>
                 {
                     BaseNodeView parentView = edge.output.node as BaseNodeView;
+                    BaseNodeView targetView = edge.input.node as BaseNodeView;
+                    
+                    Debug.Log($"创建边: {parentView.name} -> {targetView.name}");
                     parentView.OnEdgeCreate(edge);
+                    
+                    // 确保连接成功后保存图表数据
+                    EditorUtility.SetDirty(parentView.state);
+                    EditorUtility.SetDirty(targetView.state);
+                    EditorUtility.SetDirty(currentGraphData);
                 });
             }
 
@@ -95,6 +102,13 @@ namespace FlowGraph.Node
                     view.state.nodePos = view.GetPosition().position;
                 }
             });
+            
+            // 保存图表数据
+            if (graphViewChange.edgesToCreate != null && graphViewChange.edgesToCreate.Count > 0)
+            {
+                Debug.Log("保存图表数据...");
+                AssetDatabase.SaveAssets();
+            }
 
             return graphViewChange;
         }
@@ -146,36 +160,46 @@ namespace FlowGraph.Node
         //重构布局
         public void ResetNodeView()
         {
+            // 记录图表状态，用于在重置后恢复选择
+            var previousSelection = selection.OfType<BaseNodeView>().Select(v => v.state).ToList();
+            
+            // 清除所有节点
             listenToChange = false;
-            //移除所有节点和边
-            List<GraphElement> graphElements = new List<GraphElement>();
-            nodes.ForEach(x => graphElements.Add(x));
-            edges.ForEach(x => graphElements.Add(x));
-            for(int i = 0;i < graphElements.Count; i++)
+            ClearGraph();
+            
+            if (currentGraphData == null || currentGraphData.nodes == null)
+                return;
+            
+            // 创建所有节点
+            foreach (var node in currentGraphData.nodes)
             {
-                RemoveElement(graphElements[i]);
-            }
-            //Inspector删除
-            OnNodeSelected(null);
-
-            listenToChange = true;
-
-            if (currentGraphData != null)
-            {
-                Debug.Log("构建节点图");
-                foreach (var nodeState in currentGraphData.nodes)
+                // 确保节点有端口初始化
+                if (node.Ports.Count == 0)
                 {
-                    CreateBaseNodeView(nodeState);
+                    node.InitializePorts();
                 }
+                
+                CreateBaseNodeView(node);
             }
-
-            if (currentGraphData != null)
+            
+            // 创建连接
+            CreateNodeEdge();
+            
+            // 恢复选择
+            nodes.ForEach(n =>
             {
-                Debug.Log("构建节点边的关系");
-                CreateNodeEdge();
-            }
-
-            ChangeTitleColor();
+                var nodeView = n as BaseNodeView;
+                if (nodeView != null && previousSelection.Contains(nodeView.state))
+                {
+                    AddToSelection(nodeView);
+                }
+            });
+            
+            listenToChange = true;
+            
+            // 在重置完成后保存对象
+            AssetDatabase.SaveAssets();
+            Debug.Log("节点视图已重置，并保存资源");
         }
 
         //复原节点操作
@@ -221,6 +245,7 @@ namespace FlowGraph.Node
             Dictionary<BaseNodeView, Port> inputPorts = new Dictionary<BaseNodeView, Port>();
             Dictionary<BaseNodeView, List<Port>> outputPorts = new Dictionary<BaseNodeView, List<Port>>();
 
+            // 收集所有节点和端口
             ports.ForEach(x =>
             {
                 var y = x.node;
@@ -241,7 +266,94 @@ namespace FlowGraph.Node
                     outputPorts[node].Add(x);
             });
 
-            //只负责连接下面的节点
+            // 基于自定义端口系统恢复连接
+            foreach (var nodeState in map.Keys)
+            {
+                var nodeView = map[nodeState];
+                
+                // 获取所有端口
+                Dictionary<string, Port> viewPortMap = new Dictionary<string, Port>();
+                
+                // 收集节点视图中的所有端口
+                foreach (var inputPort in nodeView.inputContainer.Children().OfType<Port>())
+                {
+                    // 找到对应的NodePort ID
+                    foreach (var kvp in nodeState.GetAllPortsMap())
+                    {
+                        if (kvp.Value.Name == inputPort.portName && !kvp.Value.IsOutput)
+                        {
+                            viewPortMap[kvp.Key] = inputPort;
+                            break;
+                        }
+                    }
+                }
+                
+                foreach (var outputPort in nodeView.outputContainer.Children().OfType<Port>())
+                {
+                    // 找到对应的NodePort ID
+                    foreach (var kvp in nodeState.GetAllPortsMap())
+                    {
+                        if (kvp.Value.Name == outputPort.portName && kvp.Value.IsOutput)
+                        {
+                            viewPortMap[kvp.Key] = outputPort;
+                            break;
+                        }
+                    }
+                }
+                
+                // 遍历所有输出端口
+                foreach (var port in nodeState.Ports.Where(p => p.IsOutput))
+                {
+                    // 跳过没有连接的端口
+                    if (port.Connections.Count == 0)
+                        continue;
+                        
+                    // 确保我们有这个端口的视图引用
+                    if (!viewPortMap.TryGetValue(port.ID, out var outputPortView))
+                        continue;
+                        
+                    // 处理所有连接
+                    foreach (var connectionId in port.Connections)
+                    {
+                        // 找到目标端口
+                        NodePort targetPort = null;
+                        BaseNodeView targetNodeView = null;
+                        
+                        // 遍历所有节点查找目标端口
+                        foreach (var n in map.Keys)
+                        {
+                            targetPort = n.GetPortById(connectionId);
+                            if (targetPort != null)
+                            {
+                                targetNodeView = map[n];
+                                break;
+                            }
+                        }
+                        
+                        if (targetPort == null || targetNodeView == null)
+                            continue;
+                            
+                        // 在目标节点视图中找到对应的UI端口
+                        Port inputPortView = null;
+                        foreach (var inputPort in targetNodeView.inputContainer.Children().OfType<Port>())
+                        {
+                            if (inputPort.portName == targetPort.Name)
+                            {
+                                inputPortView = inputPort;
+                                break;
+                            }
+                        }
+                        
+                        if (inputPortView != null)
+                        {
+                            // 连接这两个端口
+                            AddEdgeByPorts(outputPortView, inputPortView);
+                        }
+                    }
+                }
+            }
+
+            // 为兼容旧代码，保留原有逻辑
             foreach (var node in map.Keys)
             {
                 if (node is BaseSequence sequence)
@@ -286,6 +398,8 @@ namespace FlowGraph.Node
             if (_outputPort.node == _inputPort.node)
                 return;
 
+            Debug.Log($"添加边连接: {_outputPort.node.name}.{_outputPort.portName} -> {_inputPort.node.name}.{_inputPort.portName}");
+
             Edge tempEdge = new Edge()
             {
                 output = _outputPort,
@@ -293,7 +407,92 @@ namespace FlowGraph.Node
             };
             tempEdge.input.Connect(tempEdge);
             tempEdge.output.Connect(tempEdge);
+            
+            // 获取节点视图并处理数据连接
+            if (_outputPort.node is BaseNodeView outputNodeView && _inputPort.node is BaseNodeView inputNodeView)
+            {
+                // 找到对应的NodePort
+                var outputPort = outputNodeView.FindNodePort(_outputPort);
+                var inputPort = inputNodeView.FindNodePort(_inputPort);
+                
+                if (outputPort != null && inputPort != null)
+                {
+                    Debug.Log($"建立数据连接: {outputPort.Name} -> {inputPort.Name}");
+                    
+                    // 先断开可能存在的旧连接
+                    NodeState.Disconnect(outputPort, inputPort);
+                    
+                    // 建立新连接
+                    NodeState.Connect(outputPort, inputPort);
+                    
+                    // 立即验证连接是否成功
+                    var allPorts = outputNodeView.state.GetAllPortsMap();
+                    var connections = outputPort.GetConnections(allPorts);
+                    Debug.Log($"连接验证: 端口 {outputPort.Name} 现在有 {connections.Count} 个连接");
+                    
+                    // 检查反向连接
+                    allPorts = inputNodeView.state.GetAllPortsMap();
+                    connections = inputPort.GetConnections(allPorts);
+                    Debug.Log($"反向连接验证: 端口 {inputPort.Name} 现在有 {connections.Count} 个连接");
+                    
+                    // 标记节点为已修改
+                    EditorUtility.SetDirty(outputNodeView.state);
+                    EditorUtility.SetDirty(inputNodeView.state);
+                    
+                    // 立即保存
+                    AssetDatabase.SaveAssets();
+                    
+                    // 如果有初始值，立即传递
+                    if (outputPort.IsOutput)
+                    {
+                        // 如果有初始值，尝试立即传递
+                        if (outputPort.Type == typeof(int))
+                        {
+                            try {
+                                int value = outputPort.GetValue<int>();
+                                inputPort.SetValue(value);
+                                Debug.Log($"初始值传递: {value} (int)");
+                            } catch (Exception e) {
+                                Debug.LogWarning($"初始值传递失败: {e.Message}");
+                            }
+                        }
+                        else if (outputPort.Type == typeof(string))
+                        {
+                            try {
+                                string value = outputPort.GetValue<string>();
+                                inputPort.SetValue(value);
+                                Debug.Log($"初始值传递: {value} (string)");
+                            } catch (Exception e) {
+                                Debug.LogWarning($"初始值传递失败: {e.Message}");
+                            }
+                        }
+                        else if (outputPort.Type == typeof(CustomPortNode.CustomData))
+                        {
+                            try {
+                                var value = outputPort.GetValue<CustomPortNode.CustomData>();
+                                inputPort.SetValue(value);
+                                Debug.Log($"初始值传递: {(value != null ? value.name : "null")} (CustomData)");
+                            } catch (Exception e) {
+                                Debug.LogWarning($"初始值传递失败: {e.Message}");
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    Debug.LogError($"无法找到端口: {(outputPort == null ? "输出端口为空" : "")} {(inputPort == null ? "输入端口为空" : "")}");
+                }
+            }
+            
+            // 添加到画布
             Add(tempEdge);
+            
+            // 保存整个图表
+            if (currentGraphData != null)
+            {
+                EditorUtility.SetDirty(currentGraphData);
+                AssetDatabase.SaveAssets();
+            }
         }
 
         protected BoolClass isDuplicate = new BoolClass();
@@ -539,112 +738,69 @@ namespace FlowGraph.Node
         // {
         //     public List<GroupData> groups = new List<GroupData>();
         // }
-        //
-        // public void LoadGraphData(FlowGraphData graphData)
-        // {
-        //     currentGraphData = graphData;
-        //     ClearGraph();
-        //     if (graphData != null)
-        //     {
-        //         LoadNodes();
-        //         LoadEdges();
-        //     }
-        // }
-        //
-        // private void ClearGraph()
-        // {
-        //     foreach (var node in nodes.ToList())
-        //     {
-        //         RemoveElement(node);
-        //     }
-        //     foreach (var edge in edges.ToList())
-        //     {
-        //         RemoveElement(edge);
-        //     }
-        // }
-        //
-        // private void LoadNodes()
-        // {
-        //     foreach (var nodeData in currentGraphData.nodes)
-        //     {
-        //         if (nodeData == null) continue;
-        //
-        //         var node = CreateNode(nodeData);
-        //         if (node != null)
-        //         {
-        //             node.SetPosition(new Rect(nodeData.nodePos, Vector2.zero));
-        //             AddElement(node);
-        //         }
-        //     }
-        // }
-        //
-        // private void LoadEdges()
-        // {
-        //     foreach (var nodeData in currentGraphData.nodes)
-        //     {
-        //         if (nodeData == null) continue;
-        //
-        //         var sourceNode = nodes.FirstOrDefault(n => (n as BaseNodeView)?.state == nodeData);
-        //         if (sourceNode == null) continue;
-        //
-        //         // 加载输出连接
-        //         if (nodeData is NodeState nodeState && nodeState.nextFlow != null)
-        //         {
-        //             var targetNode = nodes.FirstOrDefault(n => (n as BaseNodeView)?.state == nodeState.nextFlow);
-        //             if (targetNode != null)
-        //             {
-        //                 var sourcePort = sourceNode.outputContainer.Q<Port>();
-        //                 var targetPort = targetNode.inputContainer.Q<Port>();
-        //                 if (sourcePort != null && targetPort != null)
-        //                 {
-        //                     var edge = sourcePort.ConnectTo(targetPort);
-        //                     AddElement(edge);
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
 
-        // private BaseNodeView CreateNode(NodeState nodeState)
-        // {
-        //     return nodeState switch
-        //     {
-        //         BaseSequence => new SequenceNodeView { state = nodeState },
-        //         BaseBranch => new BranchNodeView { state = nodeState },
-        //         BaseAction => new ActionNodeView { state = nodeState },
-        //         BaseTrigger => new TriggerNodeView { state = nodeState },
-        //         _ => null
-        //     };
-        // }
-        //
-        // public void SaveGraph()
-        // {
-        //     if (currentGraphData == null) return;
-        //
-        //     // 保存节点数据
-        //     currentGraphData.nodes.Clear();
-        //     foreach (var node in nodes)
-        //     {
-        //         if (node is BaseNodeView nodeView && nodeView.state != null)
-        //         {
-        //             nodeView.state.nodePos = node.GetPosition().position;
-        //             currentGraphData.nodes.Add(nodeView.state);
-        //         }
-        //     }
-        //
-        //     // 保存连接数据
-        //     foreach (var edge in edges)
-        //     {
-        //         if (edge.input.node is BaseNodeView inputNode && edge.output.node is BaseNodeView outputNode)
-        //         {
-        //             if (outputNode.state is NodeState nodeState)
-        //             {
-        //                 nodeState.nextFlow = inputNode.state;
-        //             }
-        //         }
-        //     }
-        //
-        //     EditorUtility.SetDirty(currentGraphData);
-        // }
+        public void LoadGraphData(FlowGraphData graphData)
+        {
+            currentGraphData = graphData;
+            ClearGraph();
+            if (graphData != null)
+            {
+                LoadNodes();
+                LoadEdges();
+            }
+        }
+
+        private void ClearGraph()
+        {
+            foreach (var node in nodes.ToList())
+            {
+                RemoveElement(node);
+            }
+            foreach (var edge in edges.ToList())
+            {
+                RemoveElement(edge);
+            }
+        }
+
+        private void LoadNodes()
+        {
+            if (currentGraphData == null || currentGraphData.nodes == null)
+                return;
+            
+            foreach (var nodeData in currentGraphData.nodes)
+            {
+                if (nodeData == null) continue;
+                
+                // 确保节点有端口
+                if (nodeData.Ports.Count == 0)
+                {
+                    nodeData.InitializePorts();
+                }
+
+                BaseNodeView node = null;
+                
+                if (nodeData is BaseSequence)
+                    node = new SequenceNodeView { state = nodeData };
+                else if (nodeData is BaseBranch)
+                    node = new BranchNodeView { state = nodeData };
+                else if (nodeData is BaseTrigger)
+                    node = new TriggerNodeView { state = nodeData };
+                else if (nodeData is BaseAction)
+                    node = new ActionNodeView { state = nodeData };
+                    
+                if (node != null)
+                {
+                    node.OnNodeSelected = OnNodeSelected;
+                    node.SetPosition(new Rect(nodeData.nodePos, Vector2.zero));
+                    AddElement(node);
+                }
+            }
+        }
+
+        private void LoadEdges()
+        {
+            // 使用现有的CreateNodeEdge方法重建连接
+            CreateNodeEdge();
+        }
     }
 }

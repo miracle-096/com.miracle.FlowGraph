@@ -2,6 +2,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using System;
 
 namespace FlowGraph.Node
 {
@@ -31,6 +32,9 @@ namespace FlowGraph.Node
 
         private void OnEnable()
         {
+            // 注册编译完成事件
+            AssemblyReloadEvents.afterAssemblyReload += OnAfterAssemblyReload;
+            
             // 从EditorPrefs恢复上次打开的GraphData
             string lastGraphDataPath = EditorPrefs.GetString(LastGraphDataKey, "");
             if (!string.IsNullOrEmpty(lastGraphDataPath))
@@ -45,11 +49,38 @@ namespace FlowGraph.Node
 
         private void OnDisable()
         {
-            // 保存当前打开的GraphData路径
+            // 取消注册编译完成事件
+            AssemblyReloadEvents.afterAssemblyReload -= OnAfterAssemblyReload;
+            
             if (currentGraphData != null)
             {
+                // 保存当前打开的GraphData路径
                 string path = AssetDatabase.GetAssetPath(currentGraphData);
                 EditorPrefs.SetString(LastGraphDataKey, path);
+                
+                // 保存当前图形数据，确保连接关系被持久化
+                if (flowChartView != null)
+                {
+                    try
+                    {
+                        // 遍历节点，确保连接关系被正确保存
+                        foreach (var node in flowChartView.nodes)
+                        {
+                            if (node is BaseNodeView nodeView && nodeView.state != null)
+                            {
+                                // 确保所有节点状态都被标记为已修改
+                                EditorUtility.SetDirty(nodeView.state);
+                            }
+                        }
+                        
+                        // 保存所有更改
+                        currentGraphData.SaveAllChanges();
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError($"保存FlowChart数据时发生错误: {e.Message}");
+                    }
+                }
             }
         }
 
@@ -144,6 +175,18 @@ namespace FlowGraph.Node
         {
             //Debug.Log("Editor受到节点被选中信息");
             inspectorView.UpdateSelection(nodeView);
+        }
+
+        private void OnAfterAssemblyReload()
+        {
+            // 编译完成后重新打开窗口
+            if (currentGraphData != null)
+            {
+                // 使用延迟调用，确保Unity编辑器已完全初始化
+                EditorApplication.delayCall += () => {
+                    OpenWindow(currentGraphData);
+                };
+            }
         }
     }
 }
