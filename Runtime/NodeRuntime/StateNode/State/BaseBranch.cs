@@ -14,10 +14,7 @@ namespace FlowGraph.Node
         // 重写InitializePorts方法，确保有标准的控制流端口
         public override void InitializePorts()
         {
-            // 清除现有端口
-            Ports.Clear();
-            
-            // 添加标准的输入和输出控制流端口
+            base.InitializePorts();
         }
 
         //在派生类中实现该逻辑

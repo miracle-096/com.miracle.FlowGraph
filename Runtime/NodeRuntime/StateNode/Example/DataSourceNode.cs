@@ -4,6 +4,12 @@ using Cysharp.Threading.Tasks;
 
 namespace FlowGraph.Node
 {
+    [Serializable]
+    public class CustomData
+    {
+        public string name;
+        public int value;
+    }
     [NodeNote("数据源节点", "UnityBase")]
     public class DataSourceNode : BaseAction
     {
@@ -14,7 +20,7 @@ namespace FlowGraph.Node
         private string textValue = "Hello FlowGraph";
         
         [SerializeField]
-        private CustomPortNode.CustomData customValue = new CustomPortNode.CustomData
+        private CustomData customValue = new CustomData
         {
             name = "初始数据",
             value = 100
@@ -22,8 +28,7 @@ namespace FlowGraph.Node
         
         public override void InitializePorts()
         {
-            // 清除默认端口
-            Ports.Clear();
+            base.InitializePorts();
             
             // 添加标准控制流端口
             AddInputPort("input", typeof(bool));
@@ -32,7 +37,7 @@ namespace FlowGraph.Node
             // 添加数据输出端口
             AddOutputPort("数字输出", typeof(int));
             AddOutputPort("文本输出", typeof(string));
-            AddOutputPort("自定义输出", typeof(CustomPortNode.CustomData));
+            AddOutputPort("自定义输出", typeof(CustomData));
             
             // 预先设置输出值
             SetInitialValues();

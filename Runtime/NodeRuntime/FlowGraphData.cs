@@ -172,9 +172,9 @@ namespace FlowGraph.Node
                                         connectedPort.SetValue(value);
                                         Debug.Log($"传递布尔数据: {value}");
                                     }
-                                    else if (port.Type == typeof(CustomPortNode.CustomData))
+                                    else if (port.Type == typeof(CustomData))
                                     {
-                                        var value = port.GetValue<CustomPortNode.CustomData>();
+                                        var value = port.GetValue<CustomData>();
                                         connectedPort.SetValue(value);
                                         Debug.Log($"传递自定义数据: {(value != null ? value.name : "null")}");
                                     }

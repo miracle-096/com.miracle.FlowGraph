@@ -94,20 +94,42 @@ namespace FlowGraph.Node
             }
 
             //遍历节点，记录位置点
+            bool positionChanged = false;
             nodes.ForEach((n) =>
             {
                 BaseNodeView view = n as BaseNodeView;
                 if (view != null && view.state != null)
                 {
-                    view.state.nodePos = view.GetPosition().position;
+                    // 检查位置是否改变（增加一个小阈值，避免微小的浮点数差异导致不必要的保存）
+                    Vector2 oldPos = view.state.nodePos;
+                    Vector2 newPos = view.GetPosition().position;
+                    if (Vector2.Distance(oldPos, newPos) > 0.1f)
+                    {
+                        view.state.nodePos = newPos;
+                        EditorUtility.SetDirty(view.state);
+                        positionChanged = true;
+                    }
                 }
             });
             
-            // 保存图表数据
-            if (graphViewChange.edgesToCreate != null && graphViewChange.edgesToCreate.Count > 0)
+            // 保存图表数据，只在需要时才打印日志
+            if ((graphViewChange.edgesToCreate != null && graphViewChange.edgesToCreate.Count > 0) || 
+                (graphViewChange.movedElements != null && graphViewChange.movedElements.Count > 0) ||
+                positionChanged)
             {
-                Debug.Log("保存图表数据...");
-                AssetDatabase.SaveAssets();
+                // 减少日志输出频率
+                if (graphViewChange.edgesToCreate != null && graphViewChange.edgesToCreate.Count > 0)
+                {
+                    Debug.Log("保存图表连接数据...");
+                }
+                
+                EditorUtility.SetDirty(currentGraphData);
+                
+                // 将保存操作放在这里集中执行一次
+                // 使用延迟调用减少频繁保存
+                EditorApplication.delayCall += () => {
+                    AssetDatabase.SaveAssets();
+                };
             }
 
             return graphViewChange;
@@ -121,6 +143,10 @@ namespace FlowGraph.Node
             var windowRoot = window.rootVisualElement;
             var windowMousePosition = windowRoot.ChangeCoordinatesTo(windowRoot.parent, context.screenMousePosition - window.position.position);
             var graphMousePosition = contentViewContainer.WorldToLocal(windowMousePosition);
+            
+            // 添加位置日志帮助调试
+            Debug.Log($"创建节点位置: {graphMousePosition}");
+            
             CreateNode(type, graphMousePosition);
 
             return true;
@@ -130,6 +156,8 @@ namespace FlowGraph.Node
         {
             if (currentGraphData == null)
                 return;
+
+            Debug.Log($"开始创建新节点: {type.Name}");
 
             BaseNodeView nodeView = null;
             if (type.IsSubclassOf(typeof(BaseSequence)))
@@ -150,11 +178,28 @@ namespace FlowGraph.Node
             //添加Component，关联节点
             nodeView.OnNodeSelected = OnNodeSelected;
             nodeView.state = (NodeState)ScriptableObject.CreateInstance(type);
-            nodeView.state.name = type.Name;
+            
+            // 设置节点名称
+            string defaultName = type.Name;
+            nodeView.state.name = defaultName;
+            nodeView.state.explanatoryNote = defaultName;
+            nodeView.name = defaultName;
+            nodeView.title = defaultName; // 设置节点标题
+            
+            // 设置节点位置
             nodeView.SetPosition(new Rect(pos, nodeView.GetPosition().size));
+            
+            // 保存节点位置到状态对象
+            nodeView.state.nodePos = pos;
+            
+            // 确保更改被保存
+            EditorUtility.SetDirty(nodeView.state);
+            EditorUtility.SetDirty(currentGraphData);
 
             currentGraphData.AddNode(nodeView.state);
             this.AddElement(nodeView);
+            
+            Debug.Log($"新节点创建完成: {nodeView.name} (位置: {pos})");
         }
 
         //重构布局
@@ -197,9 +242,24 @@ namespace FlowGraph.Node
             
             listenToChange = true;
             
-            // 在重置完成后保存对象
-            AssetDatabase.SaveAssets();
-            Debug.Log("节点视图已重置，并保存资源");
+            // 使用延迟调用，减少界面闪烁
+            EditorApplication.delayCall += () => {
+                // 标记所有节点为已修改
+                foreach (var node in currentGraphData.nodes)
+                {
+                    if (node != null)
+                    {
+                        EditorUtility.SetDirty(node);
+                    }
+                }
+                EditorUtility.SetDirty(currentGraphData);
+                
+                // 延迟保存资源
+                EditorApplication.delayCall += () => {
+                    AssetDatabase.SaveAssets();
+                    Debug.Log("节点视图已重置，并保存资源");
+                };
+            };
         }
 
         //复原节点操作
@@ -207,6 +267,8 @@ namespace FlowGraph.Node
         {
             if (currentGraphData == null || nodeClone == null)
                 return;
+
+            Debug.Log($"开始创建节点视图: {nodeClone.GetType().Name}");
 
             BaseNodeView nodeView = nodeClone switch
             {
@@ -226,12 +288,32 @@ namespace FlowGraph.Node
 
             nodeView.OnNodeSelected = OnNodeSelected;
             nodeView.state = nodeClone;
+            
+            // 确保节点名称不为空
+            if (string.IsNullOrEmpty(nodeClone.name))
+            {
+                nodeClone.name = nodeClone.GetType().Name;
+                EditorUtility.SetDirty(nodeClone);
+                Debug.Log($"设置节点默认名称: {nodeClone.name}");
+            }
+            
+            // 设置视图名称
+            nodeView.name = nodeClone.name;
+            nodeView.title = nodeClone.name; // 设置节点标题
+            
+            // 设置节点位置
             nodeView.SetPosition(new Rect(nodeClone.nodePos, nodeView.GetPosition().size));
 
+            // 刷新节点状态
             nodeView.RefreshExpandedState();
             nodeView.RefreshPorts();
 
+            // 确保更改被保存
+            EditorUtility.SetDirty(nodeClone);
+            EditorUtility.SetDirty(currentGraphData);
+
             AddElement(nodeView);
+            Debug.Log($"节点视图创建完成: {nodeView.name} (位置: {nodeClone.nodePos})");
         }
 
         //复原节点的边
@@ -312,8 +394,9 @@ namespace FlowGraph.Node
                     if (!viewPortMap.TryGetValue(port.ID, out var outputPortView))
                         continue;
                         
-                    // 处理所有连接
-                    foreach (var connectionId in port.Connections)
+                    // 处理所有连接 - 创建连接ID的副本，避免在遍历过程中集合被修改导致异常
+                    var connectionIds = new List<string>(port.Connections);
+                    foreach (var connectionId in connectionIds)
                     {
                         // 找到目标端口
                         NodePort targetPort = null;
@@ -354,13 +437,20 @@ namespace FlowGraph.Node
             }
 
             // 为兼容旧代码，保留原有逻辑
-            foreach (var node in map.Keys)
+            var mapKeys = new List<NodeState>(map.Keys);
+            foreach (var node in mapKeys)
             {
                 if (node is BaseSequence sequence)
                 {
                     Port x = outputPorts[map[sequence]][0];
-                    foreach (var nextflow in sequence.nextflows)
+                    
+                    // 创建nextflows的副本进行遍历
+                    var nextflows = new List<NodeState>(sequence.nextflows);
+                    foreach (var nextflow in nextflows)
                     {
+                        if (nextflow == null || !map.ContainsKey(nextflow) || !inputPorts.ContainsKey(map[nextflow]))
+                            continue;
+                            
                         Port y = inputPorts[map[nextflow]];
                         AddEdgeByPorts(x, y);
                     }
@@ -439,9 +529,6 @@ namespace FlowGraph.Node
                     EditorUtility.SetDirty(outputNodeView.state);
                     EditorUtility.SetDirty(inputNodeView.state);
                     
-                    // 立即保存
-                    AssetDatabase.SaveAssets();
-                    
                     // 如果有初始值，立即传递
                     if (outputPort.IsOutput)
                     {
@@ -466,10 +553,10 @@ namespace FlowGraph.Node
                                 Debug.LogWarning($"初始值传递失败: {e.Message}");
                             }
                         }
-                        else if (outputPort.Type == typeof(CustomPortNode.CustomData))
+                        else if (outputPort.Type == typeof(CustomData))
                         {
                             try {
-                                var value = outputPort.GetValue<CustomPortNode.CustomData>();
+                                var value = outputPort.GetValue<CustomData>();
                                 inputPort.SetValue(value);
                                 Debug.Log($"初始值传递: {(value != null ? value.name : "null")} (CustomData)");
                             } catch (Exception e) {
@@ -480,7 +567,7 @@ namespace FlowGraph.Node
                 }
                 else
                 {
-                    Debug.LogError($"无法找到端口: {(outputPort == null ? "输出端口为空" : "")} {(inputPort == null ? "输入端口为空" : "")}");
+                    Debug.LogError($"无法找到端口: {(outputPort == null ? $"{outputNodeView.state}输出端口为空" : "")} {(inputPort == null ? $"{inputNodeView.state}输入端口为空" : "")}");
                 }
             }
             
@@ -491,7 +578,8 @@ namespace FlowGraph.Node
             if (currentGraphData != null)
             {
                 EditorUtility.SetDirty(currentGraphData);
-                AssetDatabase.SaveAssets();
+                // 移除多余的保存操作
+                // AssetDatabase.SaveAssets();
             }
         }
 
@@ -527,6 +615,9 @@ namespace FlowGraph.Node
                     offset++;
                     var nodeClone = ScriptableObject.CreateInstance(baseNodeView.state.GetType()) as NodeState;
                     EditorUtility.CopySerialized(baseNodeView.state, nodeClone);
+                    
+                    // 设置节点名称为类名
+                    nodeClone.name = nodeClone.GetType().Name;
 
                     BaseNodeView nodeView = nodeClone switch
                     {
@@ -567,7 +658,13 @@ namespace FlowGraph.Node
                     }
 
                     //复制出来的节点位置偏移
-                    nodeView.SetPosition(new Rect(baseNodeView.GetPosition().position + (Vector2.one * 30 * offset), nodeView.GetPosition().size));
+                    Vector2 newPosition = baseNodeView.GetPosition().position + (Vector2.one * 30 * offset);
+                    nodeView.SetPosition(new Rect(newPosition, nodeView.GetPosition().size));
+                    
+                    // 将位置同步保存到状态对象中
+                    nodeView.state.nodePos = newPosition;
+                    EditorUtility.SetDirty(nodeView.state);
+                    EditorUtility.SetDirty(currentGraphData);
                 }
             }
 
@@ -582,6 +679,11 @@ namespace FlowGraph.Node
                 //选择新生成的节点
                 this.AddToSelection(node);
             }
+            
+            // 使用延迟保存减少界面闪烁
+            EditorApplication.delayCall += () => {
+                AssetDatabase.SaveAssets();
+            };
         }
 
         protected void ChangeTitleColor()
@@ -741,13 +843,20 @@ namespace FlowGraph.Node
 
         public void LoadGraphData(FlowGraphData graphData)
         {
+            if (currentGraphData == graphData)
+                return;
+
             currentGraphData = graphData;
-            ClearGraph();
-            if (graphData != null)
-            {
-                LoadNodes();
-                LoadEdges();
-            }
+            
+            // 使用延迟调用，避免加载过程中的闪烁
+            EditorApplication.delayCall += () => {
+                ClearGraph();
+                if (graphData != null)
+                {
+                    LoadNodes();
+                    LoadEdges();
+                }
+            };
         }
 
         private void ClearGraph()
@@ -766,6 +875,9 @@ namespace FlowGraph.Node
         {
             if (currentGraphData == null || currentGraphData.nodes == null)
                 return;
+            
+            // 批量处理节点，减少刷新
+            var nodesToAdd = new List<BaseNodeView>();
             
             foreach (var nodeData in currentGraphData.nodes)
             {
@@ -791,10 +903,42 @@ namespace FlowGraph.Node
                 if (node != null)
                 {
                     node.OnNodeSelected = OnNodeSelected;
+                    
+                    // 确保节点名称不为空
+                    if (string.IsNullOrEmpty(nodeData.name))
+                    {
+                        nodeData.name = nodeData.GetType().Name;
+                        EditorUtility.SetDirty(nodeData);
+                    }
+                    
+                    // 设置视图名称
+                    node.name = nodeData.name;
+                    
+                    // 设置节点位置
                     node.SetPosition(new Rect(nodeData.nodePos, Vector2.zero));
-                    AddElement(node);
+                    
+                    nodesToAdd.Add(node);
                 }
             }
+            
+            // 批量添加节点
+            foreach (var node in nodesToAdd)
+            {
+                AddElement(node);
+            }
+            
+            // 延迟保存资源
+            EditorApplication.delayCall += () => {
+                foreach (var nodeData in currentGraphData.nodes)
+                {
+                    if (nodeData != null)
+                    {
+                        EditorUtility.SetDirty(nodeData);
+                    }
+                }
+                EditorUtility.SetDirty(currentGraphData);
+                AssetDatabase.SaveAssets();
+            };
         }
 
         private void LoadEdges()

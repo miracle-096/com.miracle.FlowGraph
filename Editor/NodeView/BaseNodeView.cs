@@ -115,7 +115,7 @@ namespace FlowGraph.Node
                     }
                     else
                     {
-                        Debug.LogError($"找不到端口: {(outputPort == null ? "输出端口为空" : "")} {(inputPort == null ? "输入端口为空" : "")}");
+                        Debug.LogError($"找不到端口: {(outputPort == null ? $"{outputNodeView.state}输出端口为空" : "")} {(inputPort == null ? $"{inputNodeView.state}输入端口为空" : "")}");
                     }
                 }
             }
